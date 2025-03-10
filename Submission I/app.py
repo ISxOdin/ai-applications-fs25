@@ -1,51 +1,45 @@
 import gradio as gr
 import pandas as pd
 import requests
+import numpy as np
 import pickle
-from sklearn.preprocessing import LabelEncoder
+from geopy.distance import geodesic
 
 # Load trained model
-model_filename = "model.pkl"  # Ensure correct path
-with open(model_filename, mode="rb") as f:
-    model, scaler, categorical_cols = pickle.load(f)
+with open("trained_apartment_model.pkl", "rb") as f:
+    model, scaler = pickle.load(f)
 
-# Safe geolocation retrieval
+# Load stops dataset
+stops_df = pd.read_csv("stops.csv")
+
+# Swiss geolocation API
+BASE_URL = "https://api3.geo.admin.ch/rest/services/api/SearchServer?"
+
 def get_geolocation(address):
-    BASE_URL = "https://api3.geo.admin.ch/rest/services/api/SearchServer?"
     params = {"searchText": address, "origins": "address", "type": "locations"}
     response = requests.get(BASE_URL, params=params)
-    
     if response.status_code == 200:
         data = response.json()
         results = data.get("results", [])
         if results:
             location = results[0]["attrs"]
-            return location.get("lat", 0), location.get("lon", 0), location.get("x", 0), location.get("y", 0)
-    
-    return 0, 0, 0, 0  # Default values if no result is found
+            return location.get("lat"), location.get("lon")
+    return None, None
 
-# Prediction function
-def predict_price(address, rooms, area, luxurious, zurich_city):
-    lat, lon, x, y = get_geolocation(address)
-    
-    # Convert input features into a DataFrame
-    input_data = pd.DataFrame([[rooms, area, luxurious, zurich_city, lat, lon, x, y]],
-                              columns=['Number of rooms', 'Area in m²', 'Luxurious', 'Zurich City', 'lat', 'lon', 'x', 'y'])
-    
-    # Encode categorical variables
-    for col in categorical_cols:
-        if col in input_data.columns:
-            input_data[col] = input_data[col].astype(str)  # Ensure correct format
-    
-    # Scale numerical features
-    input_data = scaler.transform(input_data)
-    
-    # Predict price
-    prediction = model.predict(input_data)[0]
-    return f"Predicted Price: {prediction}, Location: ({lat}, {lon})"
+def get_closest_stop(lat, lon):
+    if lat is None or lon is None:
+        return "Unknown"
+    stops_df["distance"] = stops_df.apply(lambda row: geodesic((lat, lon), (row["stop_lat"], row["stop_lon"])).meters, axis=1)
+    return stops_df.loc[stops_df["distance"].idxmin(), "stop_name"]
 
+def predict_price(address, num_rooms, area, luxurious, zurich_city):
+    lat, lon = get_geolocation(address)
+    closest_stop = get_closest_stop(lat, lon)
+    input_data = np.array([[num_rooms, area, int(luxurious), int(zurich_city)]])
+    input_data_scaled = scaler.transform(input_data)
+    predicted_price = model.predict(input_data_scaled)[0]
+    return f"CHF {predicted_price:,.2f}", closest_stop
 
-# Create Gradio interface
 demo = gr.Interface(
     fn=predict_price,
     inputs=[
@@ -55,14 +49,19 @@ demo = gr.Interface(
         gr.Checkbox(label="Luxurious"),
         gr.Checkbox(label="Zurich City"),
     ],
-    outputs="text",
-    examples=[
+    outputs=[
+        gr.Textbox(label="Estimated Price"),
+        gr.Textbox(label="Closest Stop")
+    ],
+     examples=[
         ["Zürcherstrasse 1, 8173 Neerach", 3.5, 65, False, False],
         ["Badenerstrasse 123, 8004 Zürich", 4, 98, False, True],
         ["Robert-Stephenson-Weg 47, 8004 Zürich", 4.5, 148, False, True]
     ],
     title="Apartment Price Predictor",
-    description="Predict the price of an apartment in Zurich based on its location and features."
+    description="Predict the price of an apartment in Zurich based on its location and features.",
+        article="Expected result for examples: 1850, 3491, 6820"
+
 )
 
 demo.launch()

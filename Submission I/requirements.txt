@@ -1,6 +1,6 @@
-pandas 
-numpy 
-geopy 
-gradio 
+pandas
+numpy
 scikit-learn
-streamlit
+gradio
+requests
+geopy
