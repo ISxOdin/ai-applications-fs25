@@ -2,9 +2,10 @@ import gradio as gr
 import pandas as pd
 import requests
 import pickle
+from sklearn.preprocessing import LabelEncoder
 
 # Load trained model
-model_filename = "model.pkl"
+model_filename = "Submission I\model.pkl"
 with open(model_filename, mode="rb") as f:
     model, scaler, categorical_cols = pickle.load(f)
 
