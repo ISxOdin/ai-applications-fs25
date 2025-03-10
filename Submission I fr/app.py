@@ -53,8 +53,15 @@ demo = gr.Interface(
         gr.Textbox(label="Estimated Price"),
         gr.Textbox(label="Closest Stop")
     ],
+     examples=[
+        ["Zürcherstrasse 1, 8173 Neerach", 3.5, 65, False, False],
+        ["Badenerstrasse 123, 8004 Zürich", 4, 98, False, True],
+        ["Robert-Stephenson-Weg 47, 8004 Zürich", 4.5, 148, False, True]
+    ],
     title="Apartment Price Predictor",
-    description="Predict the price of an apartment in Zurich based on its location and features."
+    description="Predict the price of an apartment in Zurich based on its location and features.",
+        article="Expected result for examples: 1850, 3491, 6820"
+
 )
 
 demo.launch()
