@@ -7,7 +7,7 @@ from sklearn.linear_model import LinearRegression
 import gradio as gr
 
 # Load dataset
-df = pd.read_csv('apartments_data_enriched_with_new_features.csv')
+df = pd.read_csv('apartments_data_enriched_with_new_features.csv', sep=',', encoding='utf-8')
 
 # Preprocess data (assuming relevant columns exist)
 features = ['Number_of_rooms', 'Area', 'Luxurious', 'Zurich_City']  # Adjust column names as needed
